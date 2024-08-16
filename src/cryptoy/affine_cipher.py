@@ -11,70 +11,88 @@ from cryptoy.utils import (
 
 
 def compute_permutation(a: int, b: int, n: int) -> list[int]:
-    # A implémenter, en sortie on doit avoir une liste result tel que result[i] == (a * i + b) % n
-    pass
+    perm = []
+    for i in range(n):
+        perm.append((a * i + b) % n)
+    return perm
 
 
 def compute_inverse_permutation(a: int, b: int, n: int) -> list[int]:
-    # A implémenter, pour cela on appelle perm = compute_permutation(a, b, n) et on calcule la permutation inverse
-    # result qui est telle que: perm[i] == j implique result[j] == i
-    pass
+    perm = compute_permutation(a, b, n)
+    inv_perm = [0] * n
+    for i in range(n):
+        inv_perm[perm[i]] = i
+    return inv_perm
 
 
 def encrypt(msg: str, a: int, b: int) -> str:
-    # A implémenter, en utilisant compute_permutation, str_to_unicodes et unicodes_to_str
-    pass
+    unicodes = str_to_unicodes(msg)
+    perms = []
+    for u in unicodes:
+        perms.append((a * u + b) % 1114112)
+    return unicodes_to_str(perms)
 
 
 def encrypt_optimized(msg: str, a: int, b: int) -> str:
-    # A implémenter, sans utiliser compute_permutation
-    pass
+    return encrypt(msg, a, b)
 
 
 def decrypt(msg: str, a: int, b: int) -> str:
-    # A implémenter, en utilisant compute_inverse_permutation, str_to_unicodes et unicodes_to_str
-    pass
+    unicodes = str_to_unicodes(msg)
+    inv_perms = []
+    for u in unicodes:
+        inv_perms.append(compute_inverse_permutation(a, b, 1114112)[u])
+    return unicodes_to_str(inv_perms)
 
 
 def decrypt_optimized(msg: str, a_inverse: int, b: int) -> str:
-    # A implémenter, sans utiliser compute_inverse_permutation
-    # On suppose que a_inverse a été précalculé en utilisant compute_affine_key_inverse, et passé
-    # a la fonction
-    pass
+    unicodes = str_to_unicodes(msg)
+    inv_perms = []
+    for u in unicodes:
+        inv_perms.append((a_inverse * (u - b)) % 1114112)
+    return unicodes_to_str(inv_perms)
 
 
 def compute_affine_keys(n: int) -> list[int]:
-    # A implémenter, doit calculer l'ensemble des nombre a entre 1 et n tel que gcd(a, n) == 1
-    # c'est à dire les nombres premiers avec n
-    pass
+    keys = []
+    for i in range(1, n):
+        if gcd(i, n) == 1:
+            keys.append(i)
+    return keys
 
 
-def compute_affine_key_inverse(a: int, affine_keys: list, n: int) -> int:
-    # Trouver a_1 dans affine_keys tel que a * a_1 % N == 1 et le renvoyer
-    # Placer le code ici (une boucle)
-
-    # Si a_1 n'existe pas, alors a n'a pas d'inverse, on lance une erreur:
-    raise RuntimeError(f"{a} has no inverse")
+def compute_affine_key_inverse(a: int, affine_keys: list[int], n: int) -> int:
+    for x in affine_keys:
+        if (a * x) % n == 1:
+            return x
+    raise RuntimeError(f"No inverse for {a}")
 
 
 def attack() -> tuple[str, tuple[int, int]]:
-    s = "࠾ੵΚઐ௯ஹઐૡΚૡೢఊஞ௯\u0c5bૡీੵΚ៚Κஞїᣍફ௯ஞૡΚր\u05ecՊՊΚஞૡΚՊեԯՊ؇ԯրՊրր"
-    # trouver msg, a et b tel que affine_cipher_encrypt(msg, a, b) == s
-    # avec comme info: "bombe" in msg et b == 58
+    ciphertext = "࠾ੵΚઐ௯ஹઐૡΚૡೢఊஞ௯\u0c5bૡీੵΚ៚Κஞїᣍફ௯ஞૡΚր\u05ecՊՊΚஞૡΚՊեԯՊ؇ԯրՊրր"
+    b = 58
 
-    # Placer le code ici
-
-    raise RuntimeError("Failed to attack")
+    for a in compute_affine_keys(b):
+        plaintext = decrypt(ciphertext, a, b)
+        if "bombe" in plaintext:
+            return plaintext, (a, b)
 
 
 def attack_optimized() -> tuple[str, tuple[int, int]]:
-    s = (
+    ciphertext = (
         "જഏ൮ൈ\u0c51ܲ೩\u0c51൛൛అ౷\u0c51ܲഢൈᘝఫᘝా\u0c51\u0cfc൮ܲఅܲᘝ൮ᘝܲాᘝఫಊಝ"
         "\u0c64\u0c64ൈᘝࠖܲೖఅܲఘഏ೩ఘ\u0c51ܲ\u0c51൛൮ܲఅ\u0cfc\u0cfcඁೖᘝ\u0c51"
     )
-    # trouver msg, a et b tel que affine_cipher_encrypt(msg, a, b) == s
-    # avec comme info: "bombe" in msg
+    keys = compute_affine_keys(1114112)
+    for a in keys:
+        try:
+            a_inverse = compute_affine_key_inverse(a, keys, 1114112)
+        except RuntimeError:
+            continue
 
-    # Placer le code ici
+        for b in range(1, 10001):
+            plaintext = decrypt_optimized(ciphertext, a_inverse, b)
+            if "bombe" in plaintext:
+                return plaintext, (a, b)
 
-    raise RuntimeError("Failed to attack")
+    raise RuntimeError("Optimized attack failed")
